@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://172.18.0.101:5432/etktdb
+    username: etktuser
+    password: etktpass
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never
