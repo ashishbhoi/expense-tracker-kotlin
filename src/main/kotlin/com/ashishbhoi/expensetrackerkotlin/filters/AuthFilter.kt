@@ -16,26 +16,19 @@ class AuthFilter : GenericFilter() {
         val httpRequest = request as HttpServletRequest
         val httpResponse = response as HttpServletResponse
 
-        val authHeader = httpRequest.getHeader("Authorization")
-        if (authHeader != null) {
-            val authHeaderArr = authHeader.split("Bearer ".toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-            if (authHeaderArr.size > 1) {
-                val token = authHeaderArr[1]
-                try {
-                    val claims: Claims = Jwts.parser().setSigningKey(Constants.API_SECRET_KEY)
-                        .parseClaimsJws(token).body
-                    httpRequest.setAttribute("userId", claims["userId"].toString().toInt())
-                } catch (e: Exception) {
-                    httpResponse.sendError(HttpStatus.FORBIDDEN.value(), "Invalid/expired token")
-                    return
-                }
-            } else {
-                httpResponse.sendError(HttpStatus.FORBIDDEN.value(), "Authorization token must be Bearer [token]")
+        val cookies = httpRequest.cookies
+        val token = cookies.find { it.name == "Authorization" }?.value
+        if (token != null) {
+            try {
+                val claims: Claims = Jwts.parser().setSigningKey(Constants.API_SECRET_KEY)
+                    .parseClaimsJws(token).body
+                httpRequest.setAttribute("userId", claims["userId"].toString().toInt())
+            } catch (e: Exception) {
+                httpResponse.sendError(HttpStatus.FORBIDDEN.value(), "Invalid/expired login")
                 return
             }
         } else {
-            httpResponse.sendError(HttpStatus.FORBIDDEN.value(), "Authorization token must be provided")
+            httpResponse.sendError(HttpStatus.FORBIDDEN.value(), "Please login to access this resource")
             return
         }
         chain?.doFilter(request, response)
