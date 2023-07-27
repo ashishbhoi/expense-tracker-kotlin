@@ -5,6 +5,8 @@ import com.ashishbhoi.expensetrackerkotlin.models.User
 import com.ashishbhoi.expensetrackerkotlin.services.UserService
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
+import jakarta.servlet.http.Cookie
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -33,15 +35,39 @@ class UserController {
         return map
     }
 
+    private fun generateCookie(token: String): Cookie {
+        val cookie = Cookie("Authorization", token)
+        cookie.path = "/"
+        cookie.maxAge = 3600 * 24
+        cookie.isHttpOnly = true
+        cookie.secure = true
+        return cookie
+    }
+
     @PostMapping("/login")
-    fun loginUser(@RequestBody userMap: User): ResponseEntity<Map<String, String>> {
+    fun loginUser(@RequestBody userMap: User, response: HttpServletResponse): ResponseEntity<Map<String, String>> {
         val user = userService.validateUser(userMap.email, userMap.password)
-        return ResponseEntity<Map<String, String>>(generateJWTToken(user), HttpStatus.OK)
+        val cookie = generateCookie(generateJWTToken(user)["token"].toString())
+        response.addCookie(cookie)
+        return ResponseEntity<Map<String, String>>(mapOf("message" to "User Logged in successfully"), HttpStatus.OK)
     }
 
     @PostMapping("/register")
-    fun registerUser(@RequestBody userMap: User): ResponseEntity<Map<String, String>> {
+    fun registerUser(@RequestBody userMap: User, response: HttpServletResponse): ResponseEntity<Map<String, String>> {
         val user = userService.registerUser(userMap)
-        return ResponseEntity<Map<String, String>>(generateJWTToken(user), HttpStatus.CREATED)
+        val cookie = generateCookie(generateJWTToken(user)["token"].toString())
+        response.addCookie(cookie)
+        return ResponseEntity<Map<String, String>>(
+            mapOf("message" to "User Created And Logged in successfully"),
+            HttpStatus.CREATED
+        )
+    }
+
+    @GetMapping("/logout")
+    fun logoutUser(response: HttpServletResponse): ResponseEntity<Map<String, String>> {
+        val cookie = Cookie("Authorization", "")
+        cookie.maxAge = 0
+        response.addCookie(cookie)
+        return ResponseEntity<Map<String, String>>(mapOf("message" to "User Logged out successfully"), HttpStatus.OK)
     }
 }
